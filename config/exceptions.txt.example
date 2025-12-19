@@ -1,0 +1,56 @@
+# S3 Multipart Cleanup - Bucket Exception List
+# ==============================================
+# 
+# Add bucket names or patterns (one per line) to exclude from cleanup.
+# Lines starting with # are comments.
+#
+# Supports:
+#   - Exact bucket names: my-special-bucket
+#   - Glob patterns: my-app-*-critical, *-compliance-*
+#
+# Common exclusions:
+#   - Long-running data ingestion buckets
+#   - Compliance/regulated data buckets
+#   - External integration buckets
+#   - Buckets with custom lifecycle requirements
+
+# ============================================
+# LONG-RUNNING UPLOAD BUCKETS
+# ============================================
+# These buckets have legitimate uploads that may take >7 days
+# data-lake-ingestion-prod
+# etl-staging-*
+# backup-archive-*
+
+# ============================================
+# COMPLIANCE / REGULATED BUCKETS
+# ============================================
+# Buckets with Object Lock or special compliance requirements
+# *-compliance-*
+# *-audit-*
+# hipaa-*
+# pci-*
+
+# ============================================
+# EXTERNAL INTEGRATIONS
+# ============================================
+# Buckets used by third-party services or partners
+# vendor-*-integration
+# partner-data-*
+
+# ============================================
+# AWS SERVICE BUCKETS
+# ============================================
+# Buckets managed by AWS services (may have restrictions)
+# aws-cloudtrail-logs-*
+# aws-config-*
+# elasticbeanstalk-*
+
+# ============================================
+# SPECIAL PIPELINES
+# ============================================
+# Add your specific exclusions below:
+
+
+
+

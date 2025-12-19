@@ -3,6 +3,7 @@
 [![AWS](https://img.shields.io/badge/AWS-S3-orange)](https://aws.amazon.com/s3/)
 [![Terraform](https://img.shields.io/badge/Terraform-Infrastructure-blue)](https://terraform.io/)
 [![Python](https://img.shields.io/badge/Python-3.8+-green)](https://python.org/)
+[![Version](https://img.shields.io/badge/Version-2.1-blue)](docs/V2_ENHANCEMENTS.md)
 
 ## 🎯 Overview
 
@@ -10,7 +11,7 @@ Production-ready solution to automatically clean up incomplete S3 multipart uplo
 
 ### Problem Solved
 - **Incomplete multipart uploads** in S3 buckets accumulate without expiration by default
-- **~3500+ buckets** affected in large-scale deployments
+- **~5300+ buckets** affected in large-scale deployments
 - **Storage costs** continuously increase from abandoned uploads
 - **Operational complexity** in managing bucket lifecycles
 
@@ -21,6 +22,15 @@ Production-ready solution to automatically clean up incomplete S3 multipart uplo
 - ✅ **Zero Terraform drift** - script works alongside IaC
 - ✅ **Production-safe** with rate limiting and progressive rollout
 
+### v2.1 Enhancements
+- ✅ **Exception lists** - exclude specific buckets/patterns
+- ✅ **Exponential backoff** - handles API throttling gracefully  
+- ✅ **Checkpointing** - resume from failures
+- ✅ **Structured output** - JSON/CSV export for observability
+- ✅ **Preflight validation** - checks permissions, Object Lock, lifecycle limits
+- ✅ **Preserves scoped rules** - doesn't replace prefix-specific rules
+- ✅ **Cross-account detection** - skips buckets owned by other accounts
+
 ## 🚀 Quick Start
 
 ### 1. For New Buckets (Terraform)
@@ -30,31 +40,38 @@ abort_incomplete_multipart_upload_days = 7
 enable_multipart_cleanup = true
 ```
 
-### 2. For Existing Buckets (Python Script)
+### 2. For Existing Buckets (Python Script v2.1)
 ```bash
-# Dry run first
-python s3_multipart_cleanup_manager.py --dry-run --days 7
+# Dry run first (with exception list)
+python scripts/s3_multipart_cleanup_manager_v2.py --dry-run --exceptions-file config/exceptions.txt
 
-# Apply to production
-python s3_multipart_cleanup_manager.py --days 7 --apply
+# Apply to production with structured output
+python scripts/s3_multipart_cleanup_manager_v2.py --days 7 --output-file results.json --apply
+
+# Resume from checkpoint after failure
+python scripts/s3_multipart_cleanup_manager_v2.py --resume checkpoint.json --apply
 ```
 
 ## 📁 Repository Structure
 
 ```
 s3-multipart-cleanup/
-├── README.md                           # This file
+├── README.md                              # This file
 ├── scripts/
-│   └── s3_multipart_cleanup_manager.py # Production script for existing buckets
+│   ├── s3_multipart_cleanup_manager.py    # v1.0 script (legacy)
+│   └── s3_multipart_cleanup_manager_v2.py # v2.1 script (recommended)
 ├── terraform/
-│   ├── variables.tf                    # Terraform variable definitions
-│   └── main.tf                         # Lifecycle configuration logic
+│   ├── variables.tf                       # Terraform variable definitions
+│   └── main.tf                            # Lifecycle configuration logic
+├── config/
+│   └── exceptions.txt.example             # Exception list template
 ├── docs/
-│   ├── IMPLEMENTATION_GUIDE.md         # Detailed implementation steps
-│   └── QUICK_REFERENCE.md              # Command reference
+│   ├── IMPLEMENTATION_GUIDE.md            # Detailed implementation steps
+│   ├── QUICK_REFERENCE.md                 # Command reference
+│   └── V2_ENHANCEMENTS.md                 # v2.1 features & migration guide
 ├── examples/
-│   └── usage_examples.sh               # Example commands
-└── requirements.txt                    # Python dependencies
+│   └── usage_examples.sh                  # Example commands
+└── requirements.txt                       # Python dependencies
 ```
 
 ## 🔧 Implementation Approach
@@ -67,7 +84,7 @@ s3-multipart-cleanup/
 - **Impact**: Future-proof against the issue
 
 #### Part 2: Remediation (Python)
-- **Purpose**: Add lifecycle rules to existing ~3500 buckets
+- **Purpose**: Add lifecycle rules to existing ~5300 buckets
 - **Method**: Boto3 script with rate limiting and safety features
 - **Impact**: Fixes current accumulation immediately
 
@@ -82,11 +99,16 @@ s3-multipart-cleanup/
 ## 🛡️ Safety Features
 
 - **Dry-run mode** for testing before execution
-- **Rate limiting** to prevent AWS API throttling
+- **Rate limiting** with exponential backoff to prevent AWS API throttling
 - **Progressive rollout** by environment/region
 - **Comprehensive logging** for audit trails
-- **Error handling** with detailed reporting
+- **Error handling** with detailed reporting and structured output
 - **Terraform drift prevention** - works alongside IaC
+- **Exception lists** - exclude buckets that need special handling
+- **Preflight checks** - validates permissions, Object Lock, lifecycle limits
+- **Checkpointing** - resume from failures without re-processing
+- **Cross-account detection** - automatically skips external buckets
+- **Preserves scoped rules** - doesn't overwrite prefix-specific lifecycle rules
 
 ## 📋 Prerequisites
 
@@ -106,7 +128,9 @@ s3-multipart-cleanup/
 
 - **[Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)** - Complete step-by-step instructions
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - Ready-to-execute commands
+- **[v2.1 Enhancements](docs/V2_ENHANCEMENTS.md)** - New features and migration guide
 - **[Usage Examples](examples/usage_examples.sh)** - Common usage patterns
+- **[Exception List Template](config/exceptions.txt.example)** - Bucket exclusion patterns
 
 ## 🤝 Contributing
 
@@ -115,15 +139,28 @@ This solution is designed for enterprise deployment. Please test thoroughly in n
 ## 📞 Support
 
 **Primary Contact**: Shabana Sulthana  
-**Team**: Cloud Infrastructure  
-**Escalation**: Houston Hopkins
+**Team**: Cloud Infrastructure / SecOps  
+**Ticket**: [CLOUD-3981](https://abnormalsecurity.atlassian.net/browse/CLOUD-3981)
 
 ## 🏷️ Version
 
-**Version**: 1.0 (Production Ready)  
-**Last Updated**: September 2025  
-**Tested On**: AWS accounts with 3500+ S3 buckets
+**Version**: 2.1 (Enhanced Production Ready)  
+**Last Updated**: December 2025  
+**Tested On**: AWS accounts with 5300+ S3 buckets
+
+### Changelog
+- **v2.1** (Dec 2025): Review fixes - extended days support (1-365), AWS-managed bucket detection, unified resume reporting, optimized API calls
+- **v2.0** (Dec 2025): Exception lists, exponential backoff, checkpointing, structured output, preflight checks, cross-account detection, preserves scoped rules
+- **v1.0** (Sep 2025): Initial production release
 
 ---
 
 *This solution addresses the specific requirement to add `abort_incomplete_multipart_upload_days` to S3 buckets while maintaining Terraform state consistency.*
+
+
+
+
+
+
+
+

@@ -98,3 +98,11 @@ echo "=== Emergency Procedures ==="
 # terraform plan
 
 echo "=== Example Complete ==="
+
+
+
+
+
+
+
+

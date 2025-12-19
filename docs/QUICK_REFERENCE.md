@@ -61,3 +61,11 @@ aws s3api delete-bucket-lifecycle --bucket BUCKET_NAME
 - [ ] Lifecycle rules visible in AWS console
 - [ ] No Terraform drift detected
 - [ ] Storage costs begin decreasing
+
+
+
+
+
+
+
+

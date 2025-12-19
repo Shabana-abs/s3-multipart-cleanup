@@ -4,7 +4,7 @@ S3 Multipart Upload Cleanup Manager - PRODUCTION READY
 ==================================================
 
 This script adds lifecycle rules to automatically clean up incomplete multipart uploads
-across S3 buckets without causing Terraform drift. Designed to handle 3500+ buckets safely.
+across S3 buckets without causing Terraform drift. Designed to handle 5300+ buckets safely.
 
 FEATURES:
 - Rate limiting to prevent AWS API throttling
@@ -509,3 +509,11 @@ Examples:
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
+
+
+

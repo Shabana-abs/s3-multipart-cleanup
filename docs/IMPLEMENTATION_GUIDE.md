@@ -5,7 +5,7 @@
 **Issue**: Incomplete multipart uploads in S3 buckets accumulate without expiration, consuming storage space and creating operational overhead.
 
 **Impact**: 
-- ~3500 S3 buckets affected
+- ~5304 S3 buckets affected
 - Storage cost implications
 - Bucket management complexity
 
@@ -20,7 +20,7 @@
 
 ### 2. Python Script (Existing Buckets) 
 **File**: `scripts/s3_multipart_cleanup_manager.py`
-- Production-ready script for updating ~3500 existing buckets
+- Production-ready script for updating ~5304 existing buckets
 - Rate limiting and error handling included
 - Progressive rollout capabilities
 
@@ -250,7 +250,7 @@ python scripts/s3_multipart_cleanup_manager.py --dry-run --days 7 2>&1 | tee deb
 - **Problem**: Unnecessary storage costs from incomplete S3 uploads
 - **Solution**: Automated cleanup saving operational overhead
 - **Risk**: Minimal - cleanup only affects abandoned uploads
-- **Timeline**: 2-week rollout across 3500+ buckets
+- **Timeline**: 2-week rollout across 5300+ buckets
 
 ### For Development Teams
 - **Impact**: No changes to normal S3 operations
@@ -272,3 +272,11 @@ python scripts/s3_multipart_cleanup_manager.py --dry-run --days 7 2>&1 | tee deb
 
 **Implementation Date**: TBD  
 **Review Date**: 2 weeks post-implementation
+
+
+
+
+
+
+
+
