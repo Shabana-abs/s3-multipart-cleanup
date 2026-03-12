@@ -1,0 +1,8 @@
+# One AWS profile name per line (from ~/.aws/config).
+# Use this with: --profiles-file config/profiles.txt
+# Lines starting with # are ignored.
+#
+# Example (replace with your profile names for each account):
+# absec-test
+# absec-prod
+# absec-staging

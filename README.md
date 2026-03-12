@@ -29,7 +29,8 @@ Production-ready solution to automatically clean up incomplete S3 multipart uplo
 - ✅ **Structured output** - JSON/CSV export for observability
 - ✅ **Preflight validation** - checks permissions, Object Lock, lifecycle limits
 - ✅ **Preserves scoped rules** - doesn't replace prefix-specific rules
-- ✅ **Cross-account detection** - skips buckets owned by other accounts
+- ✅ **Multi-account support** - run across all AWS accounts via `--profiles-file`
+- ✅ **list_buckets** only returns current account; no redundant cross-account check (per AWS API)
 
 ## 🚀 Quick Start
 
@@ -50,6 +51,10 @@ python scripts/s3_multipart_cleanup_manager_v2.py --days 7 --output-file results
 
 # Resume from checkpoint after failure
 python scripts/s3_multipart_cleanup_manager_v2.py --resume checkpoint.json --apply
+
+# Run across all AWS accounts (one profile per line in config/profiles.txt)
+python scripts/s3_multipart_cleanup_manager_v2.py --dry-run --profiles-file config/profiles.txt
+python scripts/s3_multipart_cleanup_manager_v2.py --profiles-file config/profiles.txt --output-file results.json --apply
 ```
 
 ## 📁 Repository Structure
@@ -64,7 +69,8 @@ s3-multipart-cleanup/
 │   ├── variables.tf                       # Terraform variable definitions
 │   └── main.tf                            # Lifecycle configuration logic
 ├── config/
-│   └── exceptions.txt.example             # Exception list template
+│   ├── exceptions.txt.example             # Exception list template
+│   └── profiles.txt.example               # Multi-account profile list (--profiles-file)
 ├── docs/
 │   ├── IMPLEMENTATION_GUIDE.md            # Detailed implementation steps
 │   ├── QUICK_REFERENCE.md                 # Command reference

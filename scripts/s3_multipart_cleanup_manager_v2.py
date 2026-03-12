@@ -10,7 +10,8 @@ Addresses all known limitations from v1.0:
 - Checkpointing/resume for partial failures (with unified reporting)
 - Structured output (JSON/CSV) for observability
 - Preflight permission & special bucket validation
-- Cross-account bucket detection (configurable)
+- Cross-account: when using list_buckets (default), all buckets are in the current account;
+  --no-skip-cross-account is for future use if bucket list is from an external source
 - AWS-managed bucket detection (CloudTrail, Config, etc.)
 - Glob and regex pattern support
 - Extended days support (> 7) for long-running uploads with warning
@@ -99,6 +100,7 @@ class BucketResult:
     status: BucketStatus
     message: str
     region: str = ""
+    account_id: Optional[str] = None  # Set when running multi-account (--profiles-file)
     existing_days: Optional[int] = None
     applied_days: Optional[int] = None
     had_scoped_rules: bool = False
@@ -289,19 +291,26 @@ class S3MultipartCleanupManagerV2:
         """
         Discover S3 buckets with enhanced filtering.
         
+        list_buckets() only returns buckets in the current account (per AWS API).
+        So when discovery is via list_buckets, cross-account filtering is redundant;
+        skip_cross_account is kept for API consistency and future use (e.g. if
+        bucket names are ever supplied from an external source).
+        
         Args:
             bucket_pattern: Regex pattern (uses re.search for substring matching)
             bucket_glob: Glob pattern (e.g., "myapp-*-prod")
             region_filter: Only include buckets in this region
-            skip_cross_account: Skip buckets owned by other accounts
+            skip_cross_account: No-op when using list_buckets (current account only).
+                Reserved for future use if bucket list comes from an external source.
             
         Returns:
             List of bucket names matching criteria
         """
         try:
+            # list_buckets() only returns buckets in the account we're authenticated to.
             response = self.s3_client.list_buckets()
             all_buckets = [bucket['Name'] for bucket in response['Buckets']]
-            logger.info(f"Found {len(all_buckets)} total buckets")
+            logger.info(f"Found {len(all_buckets)} total buckets in account {self._our_account_id}")
             
             filtered_buckets = []
             
@@ -331,12 +340,10 @@ class S3MultipartCleanupManagerV2:
                     except ClientError:
                         continue
                 
-                # Check cross-account ownership
-                if skip_cross_account:
-                    if not self._is_owned_by_us(bucket_name):
-                        logger.debug(f"Skipping cross-account bucket: {bucket_name}")
-                        continue
-                
+                # list_buckets() only returns buckets in the current account (per AWS API).
+                # So we do not call _is_owned_by_us here; it would be redundant and could
+                # cause false skips (e.g. ACL disabled). --no-skip-cross-account is for
+                # future use if bucket names are supplied from an external source.
                 filtered_buckets.append(bucket_name)
             
             logger.info(f"Discovered {len(filtered_buckets)} buckets matching criteria")
@@ -797,8 +804,10 @@ class S3MultipartCleanupManagerV2:
         return self._results
     
     def _add_result(self, result: BucketResult):
-        """Thread-safe result addition."""
+        """Thread-safe result addition. Sets account_id for multi-account reporting."""
         with self._results_lock:
+            if result.account_id is None and self._our_account_id:
+                result.account_id = self._our_account_id
             self._results.append(result)
             self._processed_buckets.add(result.bucket_name)
     
@@ -841,6 +850,7 @@ class S3MultipartCleanupManagerV2:
                 status=status,
                 message=result_dict.get('message', ''),
                 region=result_dict.get('region', ''),
+                account_id=result_dict.get('account_id'),
                 existing_days=result_dict.get('existing_days'),
                 applied_days=result_dict.get('applied_days'),
                 had_scoped_rules=result_dict.get('had_scoped_rules', False),
@@ -857,10 +867,11 @@ class S3MultipartCleanupManagerV2:
     # =========================================================================
     
     def generate_summary(self) -> Dict[str, Any]:
-        """Generate summary statistics."""
+        """Generate summary statistics. Includes by_account when results have account_id."""
         summary = {
             'total': len(self._results),
             'by_status': {},
+            'by_account': {},
             'regions': {},
             'scoped_rules_encountered': 0
         }
@@ -868,6 +879,9 @@ class S3MultipartCleanupManagerV2:
         for result in self._results:
             status_name = result.status.value
             summary['by_status'][status_name] = summary['by_status'].get(status_name, 0) + 1
+            
+            if result.account_id:
+                summary['by_account'][result.account_id] = summary['by_account'].get(result.account_id, 0) + 1
             
             if result.region:
                 summary['regions'][result.region] = summary['regions'].get(result.region, 0) + 1
@@ -912,6 +926,11 @@ class S3MultipartCleanupManagerV2:
         
         if summary['scoped_rules_encountered'] > 0:
             print(f"\n⚠ Buckets with prefix-scoped rules: {summary['scoped_rules_encountered']}")
+        
+        if summary.get('by_account'):
+            print("\nBuckets by Account:")
+            for account_id, count in sorted(summary['by_account'].items(), key=lambda x: -x[1]):
+                print(f"  {account_id}: {count}")
         
         if summary['regions']:
             print("\nBuckets by Region:")
@@ -978,13 +997,17 @@ Examples:
     parser.add_argument('--no-preserve-scoped-rules', action='store_false', dest='preserve_scoped_rules',
                        help='Replace all existing multipart rules')
     
-    # Cross-account handling
+    # Cross-account handling (no-op when using list_buckets; reserved for external bucket list)
     cross_account_group = parser.add_mutually_exclusive_group()
     cross_account_group.add_argument('--skip-cross-account', action='store_true', dest='skip_cross_account',
-                                     help='Skip buckets owned by other accounts (default)')
+                                     help='When using list_buckets, all buckets are current-account (default)')
     cross_account_group.add_argument('--no-skip-cross-account', action='store_false', dest='skip_cross_account',
-                                     help='Include cross-account buckets (may fail with AccessDenied)')
+                                     help='Reserved for future use if bucket list is from an external source')
     parser.set_defaults(skip_cross_account=True)
+    
+    # Multi-account: run across multiple AWS accounts via profile names
+    parser.add_argument('--profiles-file', type=str,
+                        help='Path to file with one AWS profile name per line (runs script in each account)')
     
     # AWS-managed bucket handling
     aws_managed_group = parser.add_mutually_exclusive_group()
@@ -1034,52 +1057,97 @@ Examples:
             logger.info("Operation cancelled")
             sys.exit(0)
     
-    # Initialize manager
-    manager = S3MultipartCleanupManagerV2(
-        region=args.region,
-        profile=args.profile,
-        exceptions_file=args.exceptions_file,
-        exceptions_list=args.exceptions,
-        preserve_scoped_rules=args.preserve_scoped_rules,
-        expected_days=args.days,
-        skip_aws_managed=args.skip_aws_managed
-    )
+    profiles_file = getattr(args, 'profiles_file', None)
     
-    # Resume from checkpoint if specified
-    if args.resume:
-        config = manager.load_checkpoint(args.resume)
-        if config:
-            logger.info(f"Resuming with config: {config}")
+    if profiles_file:
+        # Multi-account: run in each profile (account), then combine results
+        if not os.path.exists(profiles_file):
+            logger.error(f"Profiles file not found: {profiles_file}")
+            sys.exit(1)
+        with open(profiles_file, 'r', encoding='utf-8') as f:
+            profiles = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+        if not profiles:
+            logger.error("No profile names found in %s", profiles_file)
+            sys.exit(1)
+        logger.info("Multi-account mode: %d profiles from %s", len(profiles), profiles_file)
+        if args.resume:
+            logger.warning("--resume is not supported with --profiles-file; ignoring")
+        
+        combined_manager = None
+        for idx, profile_name in enumerate(profiles, 1):
+            logger.info("=== Account %d/%d: profile %s ===", idx, len(profiles), profile_name)
+            manager = S3MultipartCleanupManagerV2(
+                region=args.region,
+                profile=profile_name,
+                exceptions_file=args.exceptions_file,
+                exceptions_list=args.exceptions,
+                preserve_scoped_rules=args.preserve_scoped_rules,
+                expected_days=args.days,
+                skip_aws_managed=args.skip_aws_managed
+            )
+            buckets = manager.discover_buckets(
+                bucket_pattern=args.bucket_pattern,
+                bucket_glob=args.bucket_glob,
+                region_filter=args.region,
+                skip_cross_account=args.skip_cross_account
+            )
+            if not buckets:
+                logger.info("  No buckets matching criteria in this account")
+                if combined_manager is None:
+                    combined_manager = manager  # use for report/export
+                continue
+            manager.process_buckets(
+                bucket_names=buckets,
+                days=args.days,
+                dry_run=dry_run,
+                max_workers=args.max_workers,
+                checkpoint_interval=args.checkpoint_interval
+            )
+            if combined_manager is None:
+                combined_manager = manager
+            else:
+                combined_manager._results.extend(manager._results)
+        
+        if combined_manager is None:
+            logger.warning("No buckets processed in any account")
+            sys.exit(0)
+        manager = combined_manager
+    else:
+        # Single account (one profile or default credentials)
+        manager = S3MultipartCleanupManagerV2(
+            region=args.region,
+            profile=args.profile,
+            exceptions_file=args.exceptions_file,
+            exceptions_list=args.exceptions,
+            preserve_scoped_rules=args.preserve_scoped_rules,
+            expected_days=args.days,
+            skip_aws_managed=args.skip_aws_managed
+        )
+        if args.resume:
+            config = manager.load_checkpoint(args.resume)
+            if config:
+                logger.info(f"Resuming with config: {config}")
+        buckets = manager.discover_buckets(
+            bucket_pattern=args.bucket_pattern,
+            bucket_glob=args.bucket_glob,
+            region_filter=args.region,
+            skip_cross_account=args.skip_cross_account
+        )
+        if not buckets:
+            logger.warning("No buckets found matching criteria")
+            sys.exit(0)
+        manager.process_buckets(
+            bucket_names=buckets,
+            days=args.days,
+            dry_run=dry_run,
+            max_workers=args.max_workers,
+            checkpoint_interval=args.checkpoint_interval
+        )
     
-    # Discover buckets
-    buckets = manager.discover_buckets(
-        bucket_pattern=args.bucket_pattern,
-        bucket_glob=args.bucket_glob,
-        region_filter=args.region,
-        skip_cross_account=args.skip_cross_account
-    )
-    
-    if not buckets:
-        logger.warning("No buckets found matching criteria")
-        sys.exit(0)
-    
-    # Process
-    manager.process_buckets(
-        bucket_names=buckets,
-        days=args.days,
-        dry_run=dry_run,
-        max_workers=args.max_workers,
-        checkpoint_interval=args.checkpoint_interval
-    )
-    
-    # Report
+    # Report and export (single or combined multi-account)
     manager.print_report(dry_run)
-    
-    # Export results
     if args.output_file:
         manager.export_results(args.output_file, args.output_format)
-    
-    # Exit code based on failures
     summary = manager.generate_summary()
     failed_count = sum(
         count for status, count in summary['by_status'].items()
