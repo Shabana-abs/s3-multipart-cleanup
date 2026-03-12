@@ -2,6 +2,7 @@
 Exponential backoff retry for AWS throttling (SlowDown, Throttling, etc.).
 """
 import logging
+import random
 import time
 from functools import wraps
 from typing import Callable
@@ -35,7 +36,7 @@ def retry_with_backoff(
                         last_exception = e
                         if attempt < max_retries:
                             delay = min(base_delay * (exponential_base ** attempt), max_delay)
-                            delay *= 0.5 + (hash(str(args)) % 100) / 100
+                            delay *= 0.5 + random.random() * 0.5
                             logger.warning(
                                 "Throttled, retrying in %.1fs (attempt %d/%d)",
                                 delay, attempt + 1, max_retries,

@@ -86,11 +86,10 @@ class S3MultipartCleanupManagerV2:
         bucket_pattern: Optional[str] = None,
         bucket_glob: Optional[str] = None,
         region_filter: Optional[str] = None,
-        skip_cross_account: bool = True,
     ) -> List[str]:
         """
-        List buckets in current account and filter by exceptions, regex, glob, region.
-        list_buckets() only returns current account; skip_cross_account is for future external list.
+        List buckets in the current account and filter by exceptions, regex, glob, region.
+        Note: list_buckets() only returns buckets owned by the current account.
         """
         try:
             response = self.s3_client.list_buckets()
@@ -119,8 +118,9 @@ class S3MultipartCleanupManagerV2:
             return []
 
     def _is_excepted(self, bucket_name: str) -> bool:
+        """Check if bucket matches any exception pattern (exact name or glob)."""
         for pattern in self.exceptions:
-            if pattern == bucket_name or ('*' in pattern or '?' in pattern) and fnmatch.fnmatch(bucket_name, pattern):
+            if fnmatch.fnmatch(bucket_name, pattern):
                 return True
         return False
 

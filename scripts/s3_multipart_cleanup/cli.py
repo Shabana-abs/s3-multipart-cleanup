@@ -32,8 +32,6 @@ Examples:
     parser.add_argument('--exceptions', type=str, nargs='+', help='Inline exceptions')
     parser.add_argument('--preserve-scoped-rules', action='store_true', default=True, help='Keep prefix-scoped rules (default)')
     parser.add_argument('--no-preserve-scoped-rules', action='store_false', dest='preserve_scoped_rules')
-    parser.add_argument('--skip-cross-account', action='store_true', dest='skip_cross_account', default=True)
-    parser.add_argument('--no-skip-cross-account', action='store_false', dest='skip_cross_account')
     parser.add_argument('--profiles-file', type=str, help='One AWS profile per line for multi-account run')
     parser.add_argument('--skip-aws-managed', action='store_true', dest='skip_aws_managed', default=True)
     parser.add_argument('--no-skip-aws-managed', action='store_false', dest='skip_aws_managed')
@@ -62,7 +60,6 @@ def run_single_account(args: argparse.Namespace, dry_run: bool) -> S3MultipartCl
         bucket_pattern=args.bucket_pattern,
         bucket_glob=args.bucket_glob,
         region_filter=args.region,
-        skip_cross_account=args.skip_cross_account,
     )
     if not buckets:
         return manager
@@ -103,7 +100,6 @@ def run_multi_account(args: argparse.Namespace, dry_run: bool) -> S3MultipartCle
             bucket_pattern=args.bucket_pattern,
             bucket_glob=args.bucket_glob,
             region_filter=args.region,
-            skip_cross_account=args.skip_cross_account,
         )
         if not buckets:
             if combined is None:
@@ -120,6 +116,7 @@ def run_multi_account(args: argparse.Namespace, dry_run: bool) -> S3MultipartCle
             combined = manager
         else:
             combined._results.extend(manager._results)
+            combined._processed_buckets.update(manager._processed_buckets)
     if combined is None:
         raise SystemExit("No buckets processed in any account")
     return combined
