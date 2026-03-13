@@ -32,7 +32,7 @@ Version 2.1 addresses all known limitations and blind spots identified in v1.0, 
 | Issue | v1.0 Behavior | v2.1 Fix |
 |-------|---------------|----------|
 | Regex vs glob confusion | `re.match` only | ✅ **Both supported** - `--bucket-glob` for simple patterns |
-| Cross-account buckets | Failed at runtime | ✅ **Pre-filtered** - detects and skips (configurable with `--no-skip-cross-account`) |
+| Cross-account buckets | Failed at runtime | ✅ **Pre-filtered** — list_buckets only returns owned buckets; use `--profiles-file` for multi-account |
 | Region filtering | Basic | ✅ **Improved** - proper us-east-1 handling |
 
 ### 4. IaC / Process Considerations
