@@ -55,7 +55,6 @@ class S3MultipartCleanupManagerV2:
         self._results_lock = Lock()
         self._results: List[BucketResult] = []
         self._processed_buckets: Set[str] = set()
-        self._bucket_owner_cache: Dict[str, str] = {}
         self._our_account_id: Optional[str] = None
         self._init_client()
 
@@ -131,20 +130,6 @@ class S3MultipartCleanupManagerV2:
     def _get_bucket_region(self, bucket_name: str) -> str:
         r = self.s3_client.get_bucket_location(Bucket=bucket_name).get('LocationConstraint')
         return r if r else 'us-east-1'
-
-    @retry_with_backoff(max_retries=3)
-    def _is_owned_by_us(self, bucket_name: str) -> bool:
-        if bucket_name in self._bucket_owner_cache:
-            return self._bucket_owner_cache[bucket_name] == self._our_account_id
-        try:
-            self.s3_client.get_bucket_acl(Bucket=bucket_name)
-            self._bucket_owner_cache[bucket_name] = self._our_account_id
-            return True
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'AccessDenied':
-                self._bucket_owner_cache[bucket_name] = 'unknown'
-                return False
-            raise
 
     # ---------- Preflight ----------
 

@@ -115,8 +115,9 @@ def run_multi_account(args: argparse.Namespace, dry_run: bool) -> S3MultipartCle
         if combined is None:
             combined = manager
         else:
-            combined._results.extend(manager._results)
-            combined._processed_buckets.update(manager._processed_buckets)
+            with combined._results_lock:
+                combined._results.extend(manager._results)
+                combined._processed_buckets.update(manager._processed_buckets)
     if combined is None:
         raise SystemExit("No buckets processed in any account")
     return combined

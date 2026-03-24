@@ -3,7 +3,7 @@
 [![AWS](https://img.shields.io/badge/AWS-S3-orange)](https://aws.amazon.com/s3/)
 [![Terraform](https://img.shields.io/badge/Terraform-Infrastructure-blue)](https://terraform.io/)
 [![Python](https://img.shields.io/badge/Python-3.8+-green)](https://python.org/)
-[![Version](https://img.shields.io/badge/Version-2.1-blue)](docs/V2_ENHANCEMENTS.md)
+[![Version](https://img.shields.io/badge/Version-2.1-blue)](scripts/s3_multipart_cleanup/README.md)
 
 ## 🎯 Overview
 
@@ -16,7 +16,7 @@ Production-ready solution to automatically clean up incomplete S3 multipart uplo
 - **Operational complexity** in managing bucket lifecycles
 
 ### Solution Benefits
-- ✅ **Automatic cleanup** after configurable days (1-7)
+- ✅ **Automatic cleanup** after configurable days (1–365; default 7)
 - ✅ **Terraform integration** for new buckets
 - ✅ **Python script** for existing bucket remediation
 - ✅ **Zero Terraform drift** - script works alongside IaC
@@ -63,8 +63,8 @@ python scripts/s3_multipart_cleanup_manager_v2.py --profiles-file config/profile
 s3-multipart-cleanup/
 ├── README.md                              # This file
 ├── scripts/
-│   ├── s3_multipart_cleanup_manager.py    # v1.0 script (legacy)
-│   └── s3_multipart_cleanup_manager_v2.py # v2.1 script (recommended)
+│   ├── s3_multipart_cleanup/               # v2.1 package (manager, CLI, models)
+│   └── s3_multipart_cleanup_manager_v2.py # v2.1 entrypoint
 ├── terraform/
 │   ├── variables.tf                       # Terraform variable definitions
 │   └── main.tf                            # Lifecycle configuration logic
@@ -72,9 +72,8 @@ s3-multipart-cleanup/
 │   ├── exceptions.txt.example             # Exception list template
 │   └── profiles.txt.example               # Multi-account profile list (--profiles-file)
 ├── docs/
-│   ├── IMPLEMENTATION_GUIDE.md            # Detailed implementation steps
-│   ├── QUICK_REFERENCE.md                 # Command reference
-│   └── V2_ENHANCEMENTS.md                 # v2.1 features & migration guide
+│   └── TEST_EVIDENCE.md                   # Test run evidence (sanitized)
+├── tests/                                 # pytest unit tests
 ├── examples/
 │   └── usage_examples.sh                  # Example commands
 └── requirements.txt                       # Python dependencies
@@ -99,7 +98,7 @@ s3-multipart-cleanup/
 | Timeframe | Impact |
 |-----------|--------|
 | **Immediate** | Cleanup of uploads older than specified days |
-| **1-7 days** | Complete cleanup of all existing incomplete uploads |
+| **1–365 days** | Complete cleanup of incomplete uploads once they exceed the configured threshold |
 | **Ongoing** | Automatic prevention of future accumulation |
 
 ## 🛡️ Safety Features
@@ -113,7 +112,7 @@ s3-multipart-cleanup/
 - **Exception lists** - exclude buckets that need special handling
 - **Preflight checks** - validates permissions, Object Lock, lifecycle limits
 - **Checkpointing** - resume from failures without re-processing
-- **Cross-account detection** - automatically skips external buckets
+- **Multi-account runs** - use `--profiles-file` to iterate profiles (each account’s buckets are listed separately)
 - **Preserves scoped rules** - doesn't overwrite prefix-specific lifecycle rules
 
 ## 📋 Prerequisites
@@ -132,9 +131,8 @@ s3-multipart-cleanup/
 
 ## 📖 Documentation
 
-- **[Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)** - Complete step-by-step instructions
-- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Ready-to-execute commands
-- **[v2.1 Enhancements](docs/V2_ENHANCEMENTS.md)** - New features and migration guide
+- **[Package overview](scripts/s3_multipart_cleanup/README.md)** - v2.1 module layout
+- **[Test evidence](docs/TEST_EVIDENCE.md)** - Validated behavior (sanitized)
 - **[Usage Examples](examples/usage_examples.sh)** - Common usage patterns
 - **[Exception List Template](config/exceptions.txt.example)** - Bucket exclusion patterns
 
@@ -156,14 +154,12 @@ This solution is designed for enterprise deployment. Please test thoroughly in n
 
 ### Changelog
 - **v2.1** (Dec 2025): Review fixes - extended days support (1-365), AWS-managed bucket detection, unified resume reporting, optimized API calls
-- **v2.0** (Dec 2025): Exception lists, exponential backoff, checkpointing, structured output, preflight checks, cross-account detection, preserves scoped rules
+- **v2.0** (Dec 2025): Exception lists, exponential backoff, checkpointing, structured output, preflight checks, preserves scoped rules
 - **v1.0** (Sep 2025): Initial production release
 
 ---
 
 *This solution addresses the specific requirement to add `abort_incomplete_multipart_upload_days` to S3 buckets while maintaining Terraform state consistency.*
-
-
 
 
 

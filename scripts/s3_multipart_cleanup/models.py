@@ -13,7 +13,6 @@ class BucketStatus(Enum):
     SUCCESS = "success"
     ALREADY_CONFIGURED = "already_configured"
     SKIPPED_EXCEPTION = "skipped_exception"
-    SKIPPED_CROSS_ACCOUNT = "skipped_cross_account"
     SKIPPED_OBJECT_LOCK = "skipped_object_lock"
     SKIPPED_SPECIAL = "skipped_special"
     SKIPPED_LIFECYCLE_LIMIT = "skipped_lifecycle_limit"

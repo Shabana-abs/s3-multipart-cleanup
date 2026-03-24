@@ -1,7 +1,7 @@
 # S3 Multipart Cleanup Manager v2.1 - Test Evidence
 
 **Test Date:** February 9, 2026  
-**AWS Account:** absec-test (943436369047)  
+**AWS Account:** example-test-account (REDACTED_ACCOUNT_ID)  
 **Tester:** Shabana Sulthana  
 **Script Version:** v2.1
 
@@ -26,7 +26,7 @@
 python3 scripts/s3_multipart_cleanup_manager_v2.py \
   --dry-run \
   --days 7 \
-  --bucket-pattern "absec-test-euwe1-stratos-(config|mtls)|absec-test-usea2-demo-hlostrat-firehose(-logs)?|absec-test-usea2-em-mdb-mailboxes" \
+  --bucket-pattern "example-test-account-euwe1-stratos-(config|mtls)|example-bucket-usea2-firehose(-logs)?|example-bucket-usea2-mailboxes" \
   --output-format json \
   --output-file test_dryrun_results.json
 ```
@@ -34,7 +34,7 @@ python3 scripts/s3_multipart_cleanup_manager_v2.py \
 **Output:**
 ```
 2026-02-09 20:30:41,672 - INFO - Found credentials in environment variables.
-2026-02-09 20:30:48,103 - INFO - Connected to AWS account 943436369047, region: default
+2026-02-09 20:30:48,103 - INFO - Connected to AWS account REDACTED_ACCOUNT_ID, region: default
 2026-02-09 20:30:49,635 - INFO - Found 1200 total buckets
 2026-02-09 20:31:14,632 - INFO - Discovered 6 buckets matching criteria
 2026-02-09 20:31:14,634 - INFO - Processing 6 buckets with 5 workers
@@ -76,7 +76,7 @@ Buckets by Region:
     },
     "results": [
         {
-            "bucket_name": "absec-test-euwe1-stratos-mtls",
+            "bucket_name": "example-bucket-euwe1-mtls",
             "status": "dry_run",
             "message": "DRY RUN: Would apply - Added multipart cleanup rule",
             "region": "eu-west-1",
@@ -101,14 +101,14 @@ Buckets by Region:
 python3 scripts/s3_multipart_cleanup_manager_v2.py \
   --apply \
   --days 7 \
-  --bucket-pattern "absec-test-euwe1-stratos-(config|mtls)$" \
+  --bucket-pattern "example-test-account-euwe1-stratos-(config|mtls)$" \
   --output-format json \
   --output-file test_apply_results.json
 ```
 
 **Output:**
 ```
-2026-02-09 20:36:18,397 - INFO - Connected to AWS account 943436369047, region: default
+2026-02-09 20:36:18,397 - INFO - Connected to AWS account REDACTED_ACCOUNT_ID, region: default
 2026-02-09 20:36:19,634 - INFO - Found 1200 total buckets
 2026-02-09 20:36:25,320 - INFO - Discovered 2 buckets matching criteria
 2026-02-09 20:36:25,321 - INFO - Processing 2 buckets with 5 workers
@@ -138,7 +138,7 @@ Buckets by Region:
 **Verification Script:**
 ```python
 s3 = boto3.client('s3', region_name='eu-west-1')
-buckets = ['absec-test-euwe1-stratos-config', 'absec-test-euwe1-stratos-mtls']
+buckets = ['example-bucket-euwe1-config', 'example-bucket-euwe1-mtls']
 for bucket in buckets:
     lifecycle = s3.get_bucket_lifecycle_configuration(Bucket=bucket)
     # Check for AbortIncompleteMultipartUpload rule
@@ -146,12 +146,12 @@ for bucket in buckets:
 
 **Output:**
 ```
-=== absec-test-euwe1-stratos-config ===
+=== example-bucket-euwe1-config ===
   ✓ Rule ID: auto-multipart-cleanup-managed
   ✓ Status: Enabled
   ✓ AbortIncompleteMultipartUpload: 7 days
 
-=== absec-test-euwe1-stratos-mtls ===
+=== example-bucket-euwe1-mtls ===
   ✓ Rule ID: auto-multipart-cleanup-managed
   ✓ Status: Enabled
   ✓ AbortIncompleteMultipartUpload: 7 days
@@ -177,7 +177,7 @@ for bucket in buckets:
 python3 scripts/s3_multipart_cleanup_manager_v2.py \
   --dry-run \
   --days 7 \
-  --bucket-pattern "absec-test-usea2-demo-hlostrat" \
+  --bucket-pattern "example-bucket-usea2-demo" \
   --exceptions-file test_exceptions.txt
 ```
 
@@ -199,14 +199,14 @@ python3 scripts/s3_multipart_cleanup_manager_v2.py \
 python3 scripts/s3_multipart_cleanup_manager_v2.py \
   --apply \
   --days 7 \
-  --bucket-pattern "absec-test-euwe1-stratos-(config|mtls)$"
+  --bucket-pattern "example-test-account-euwe1-stratos-(config|mtls)$"
 ```
 
 **Output:**
 ```
 2026-02-09 20:41:53,614 - INFO - Discovered 2 buckets matching criteria
-2026-02-09 20:41:54,958 - INFO - ○ absec-test-euwe1-stratos-config: Already configured with 7 days (managed rule)
-2026-02-09 20:41:54,974 - INFO - ○ absec-test-euwe1-stratos-mtls: Already configured with 7 days (managed rule)
+2026-02-09 20:41:54,958 - INFO - ○ example-bucket-euwe1-config: Already configured with 7 days (managed rule)
+2026-02-09 20:41:54,974 - INFO - ○ example-bucket-euwe1-mtls: Already configured with 7 days (managed rule)
 
 ======================================================================
 Results by Status:
@@ -237,7 +237,7 @@ Results by Status:
 
 ## Environment Details
 
-- **AWS Account:** 943436369047 (absec-test)
+- **AWS Account:** REDACTED_ACCOUNT_ID (example-test-account)
 - **Total Buckets in Account:** 1,200
 - **Python Version:** 3.13.7
 - **boto3 Version:** Latest (via pip)
@@ -256,4 +256,4 @@ All 5 tests passed successfully. The S3 Multipart Cleanup Manager v2.1 is **read
 5. ✅ Produces structured JSON output for audit
 6. ✅ Works across multiple regions
 
-**Recommendation:** Proceed with phased rollout per EXECUTION_STRATEGY.md
+**Recommendation:** Proceed with a phased rollout (dry-run, limited buckets, then broader scope) per your org change process.
